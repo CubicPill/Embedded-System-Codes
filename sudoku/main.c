@@ -6,19 +6,21 @@
 #include "remote.h"
 #include "key.h"
 
-#define NAME_MAX_LEN 15;
+#define NAME_MAX_LEN 15
 #define REM_ZERO 255
 #define REM_DEL 10
 #define REM_UP 11
 #define REM_DOWN 12
 #define REM_LEFT 13
 #define REM_RIGHT 14
+#define REM_PLAY 15
 void board_init(const u8 board[][9]);
 void copy_arr(const u8 src[][9],u8 dst[][9]);
 u8 scan_input(u8 *key,u8*press_key);
 u8 validate(u8 numbers[][9]);
-u8 KEY_OPT_LEN[10]={3,4,4,4,4,4,5,4,5,2};
+u8 KEY_OPT_LEN[10]={2,3,4,4,4,4,4,5,4,5};
 u8 KEY_OPT_CHAR[10][5]={
+   {' ','0'},
    {',','.','1'},
    {'a','b','c','2'},
    {'d','e','f','3'},
@@ -27,77 +29,81 @@ u8 KEY_OPT_CHAR[10][5]={
    {'m','n','o','6'},
    {'p','q','r','s','7'},
    {'t','u','v','8'},
-   {'w','x','y','z','9'},
-   {' ','0'}
+   {'w','x','y','z','9'}
+
 };
 
-u8 scan_input(u8 *key,u8*press_key){
+u8 scan_input(u8 *key_ptr,u8*press_key_ptr){
    u8 _key=Remote_Scan();
-   *key=0;
-   *press_key=KEY_Scan(0);
+   *key_ptr=0;
+   *press_key_ptr=KEY_Scan(0);
    if(_key && RmtCnt==0) {
       switch(_key) {
+
+      case 2:
+         *key_ptr=REM_PLAY;
+         break;
       case 98:
          // go up
-         *key=REM_UP;
+         *key_ptr=REM_UP;
          break;
 
       case 194:
          //go right
-         *key=REM_RIGHT;
+         *key_ptr=REM_RIGHT;
          break;
 
       case 34:
          //go left
-         *key=REM_LEFT;
+         *key_ptr=REM_LEFT;
          break;
 
       case 168:
          //go down
-         *key=REM_DOWN;
+         *key_ptr=REM_DOWN;
          break;
       case 66:
-         *key=REM_ZERO;
+         *key_ptr=REM_ZERO;
          break;
       case 104:
-         *key=1;
+         *key_ptr=1;
          break;
 
       case 152:
-         *key=2;
+         *key_ptr=2;
          break;
 
       case 176:
-         *key=3;
+         *key_ptr=3;
          break;
 
       case 48:
-         *key=4;
+         *key_ptr=4;
          break;
 
       case 24:
-         *key=5;
+         *key_ptr=5;
          break;
 
       case 122:
-         *key=6;
+         *key_ptr=6;
          break;
 
       case 16:
-         *key=7;
+         *key_ptr=7;
          break;
 
       case 56:
-         *key=8;
+         *key_ptr=8;
          break;
 
       case 90:
-         *key=9;
+         *key_ptr=9;
          break;
 
 
       case 82:
-         *key=REM_DEL;
+         *key_ptr=REM_DEL;
          break;
 
       }
@@ -105,7 +111,7 @@ u8 scan_input(u8 *key,u8*press_key){
    }
 
 
-   if (*key || *press_key) {
+   if (*key_ptr || *press_key_ptr) {
       return 1;
    } return 0;
 
@@ -138,12 +144,14 @@ int main(void) {
    s8 cx=0,cy=0; // position change
    u8* str=0; // String to be displayed
    u8 key=0;
+   u8 last_key=0;
    u8 press_key=0;
    u8 input=0; // input value
    u8 s=0; //KEY0 switch
    u8 sn=0;
    u8 name_cursor=0;
    u8 input_cursor=0;
+   char name[NAME_MAX_LEN]={0};
    copy_arr(KNOWN_NUM,fill_num);
    delay_init();
    KEY_Init();
@@ -156,6 +164,27 @@ int main(void) {
 
    LCD_ShowString(30,120,140,16,16,"Input your name:");
    LCD_ShowChar(24,140,'>',16,1);
+   while(1) { // input name
+      scan_input(&key,&press_key);
+      if( key<=9) {
+         if (key==last_key) {
+            last_key=key;
+            input_cursor=(input_cursor+1)%KEY_OPT_LEN[key];
+
+         }else{
+            ++name_cursor;
+         }
+      }else if (key==REM_PLAY) {
+         break;
+      }else if (key==REM_RIGHT) {
+         if (name_cursor<NAME_MAX_LEN) {
+            ++name_cursor;
+         }
+
+      }
+
+
+   }
 
 
 
