@@ -7,14 +7,14 @@
 #include "key.h"
 
 #define NAME_MAX_LEN 15
-#define REM_ZERO 255
+#define REM_NONE 255
 #define REM_DEL 10
 #define REM_UP 11
 #define REM_DOWN 12
 #define REM_LEFT 13
 #define REM_RIGHT 14
 #define REM_PLAY 15
-void board_init(const u8 board[][9]);
+void board_init(const u8 board[][9],const u8 *name);
 void copy_arr(const u8 src[][9],u8 dst[][9]);
 u8 scan_input(u8 *key,u8*press_key);
 u8 validate(u8 numbers[][9]);
@@ -35,7 +35,7 @@ u8 KEY_OPT_CHAR[10][5]={
 
 u8 scan_input(u8 *key_ptr,u8*press_key_ptr){
    u8 _key=Remote_Scan();
-   *key_ptr=0;
+   *key_ptr=REM_NONE;
    *press_key_ptr=KEY_Scan(0);
    if(_key && RmtCnt==0) {
       switch(_key) {
@@ -63,7 +63,7 @@ u8 scan_input(u8 *key_ptr,u8*press_key_ptr){
          *key_ptr=REM_DOWN;
          break;
       case 66:
-         *key_ptr=REM_ZERO;
+         *key_ptr=0;
          break;
       case 104:
          *key_ptr=1;
@@ -151,7 +151,7 @@ int main(void) {
    u8 sn=0;
    u8 name_cursor=0;
    u8 input_cursor=0;
-   char name[NAME_MAX_LEN]={0};
+   u8 name[NAME_MAX_LEN+1]={0};
    copy_arr(KNOWN_NUM,fill_num);
    delay_init();
    KEY_Init();
@@ -164,23 +164,42 @@ int main(void) {
 
    LCD_ShowString(30,120,140,16,16,"Input your name:");
    LCD_ShowChar(24,140,'>',16,1);
+   LCD_Fill(30,160,240,180,WHITE);
+   LCD_ShowChar(30+8*name_cursor,160,'^',16,1);
    while(1) { // input name
       scan_input(&key,&press_key);
-      if( key<=9) {
+      if(key<=9) {
          if (key==last_key) {
             last_key=key;
             input_cursor=(input_cursor+1)%KEY_OPT_LEN[key];
-
          }else{
-            ++name_cursor;
+            input_cursor=0;
          }
-      }else if (key==REM_PLAY) {
-         break;
-      }else if (key==REM_RIGHT) {
+         name[name_cursor]=KEY_OPT_CHAR[key][input_cursor];
+         LCD_ShowChar(30+8*name_cursor,140,KEY_OPT_CHAR[key][input_cursor],16,1);
+
+      } else if (key==REM_RIGHT) {
          if (name_cursor<NAME_MAX_LEN) {
             ++name_cursor;
          }
+         input_cursor=0;
+         LCD_Fill(30,160,240,180,WHITE);
+         LCD_ShowChar(30+8*name_cursor,160,'^',16,1);
 
+      } else if (key==REM_LEFT) {
+         if (name_cursor>0) {
+            --name_cursor;
+         }
+         input_cursor=0;
+         LCD_Fill(30,160,240,180,WHITE);
+         LCD_ShowChar(30+8*name_cursor,160,'^',16,1);
+      } else if (key==REM_DEL) {
+         input_cursor=0;
+         LCD_Fill(30+8*name_cursor,140,38+8*name_cursor,156,WHITE);
+         name[name_cursor]=' ';
+      } else if (key==REM_PLAY) {
+         name[name_cursor+1]='\0';
+         break;
       }
 
 
@@ -189,7 +208,7 @@ int main(void) {
 
 
 
-   board_init(KNOWN_NUM);
+   board_init(KNOWN_NUM,name);
    str="Ready";
    while(1) {
       key=Remote_Scan();
@@ -330,7 +349,7 @@ int main(void) {
       }
       if(press_key) {
          if (press_key==WKUP_PRES) {
-            board_init(KNOWN_NUM);
+            board_init(KNOWN_NUM,name);
             copy_arr(KNOWN_NUM,fill_num);
             px=0;
             py=0;
@@ -369,7 +388,7 @@ int main(void) {
    }
 }
 
-void board_init(const u8 KNOWN_NUM[][9]){
+void board_init(const u8 KNOWN_NUM[][9],const u8* name){
    u8 i,j;
    POINT_COLOR=BLACK;
    LCD_Clear(WHITE);
@@ -410,7 +429,8 @@ void board_init(const u8 KNOWN_NUM[][9]){
       }
    }
    POINT_COLOR=RED;
-   LCD_ShowString(75,234,100,16,16,"Sudoku Game");
+   LCD_ShowString(20,234,100,16,16,"Sudoku Game");
+   LCD_ShowString(120,234,120,16,16,name);
    LCD_ShowString(20,260,10,16,16,">");
 
 }
