@@ -14,13 +14,14 @@
 #define REM_LEFT 13
 #define REM_RIGHT 14
 #define REM_PLAY 15
+#define REM_POWER 17
 void board_init(const u8 board[][9],const u8 *name);
 void copy_arr(const u8 src[][9],u8 dst[][9]);
 u8 scan_input(u8 *key,u8*press_key);
 u8 validate(u8 numbers[][9]);
-u8 KEY_OPT_LEN[10]={2,3,4,4,4,4,4,5,4,5};
+u8 KEY_OPT_LEN[10]={1,3,4,4,4,4,4,5,4,5};
 u8 KEY_OPT_CHAR[10][5]={
-   {' ','0'},
+   {'0'},
    {',','.','1'},
    {'a','b','c','2'},
    {'d','e','f','3'},
@@ -105,15 +106,20 @@ u8 scan_input(u8 *key_ptr,u8*press_key_ptr){
       case 82:
          *key_ptr=REM_DEL;
          break;
+      case 162:
+         *key_ptr=REM_POWER;
+         break;
 
       }
 
    }
+   printf("REMOTE %d\r\n",*key_ptr);
+   printf("PRESS %d\r\n",*press_key_ptr);
 
-
-   if (*key_ptr || *press_key_ptr) {
+   if (*key_ptr!=REM_NONE || *press_key_ptr) {
       return 1;
    } return 0;
+
 
 }
 
@@ -146,7 +152,6 @@ int main(void) {
    u8 key=0;
    u8 last_key=0;
    u8 press_key=0;
-   u8 input=0; // input value
    u8 s=0; //KEY0 switch
    u8 sn=0;
    u8 name_cursor=0;
@@ -163,19 +168,20 @@ int main(void) {
 
 
    LCD_ShowString(30,120,140,16,16,"Input your name:");
-   LCD_ShowChar(24,140,'>',16,1);
+   LCD_ShowChar(20,140,'>',16,1);
    LCD_Fill(30,160,240,180,WHITE);
    LCD_ShowChar(30+8*name_cursor,160,'^',16,1);
    while(1) { // input name
       scan_input(&key,&press_key);
       if(key<=9) {
          if (key==last_key) {
-            last_key=key;
+
             input_cursor=(input_cursor+1)%KEY_OPT_LEN[key];
          }else{
             input_cursor=0;
          }
          name[name_cursor]=KEY_OPT_CHAR[key][input_cursor];
+         LCD_Fill(30+8*name_cursor,140,38+8*name_cursor,156,WHITE);
          LCD_ShowChar(30+8*name_cursor,140,KEY_OPT_CHAR[key][input_cursor],16,1);
 
       } else if (key==REM_RIGHT) {
@@ -201,6 +207,10 @@ int main(void) {
          name[name_cursor+1]='\0';
          break;
       }
+      if (key!=REM_NONE) {
+         last_key=key;
+      }
+      delay_ms(300);
 
 
    }
@@ -211,98 +221,32 @@ int main(void) {
    board_init(KNOWN_NUM,name);
    str="Ready";
    while(1) {
-      key=Remote_Scan();
-      press_key=KEY_Scan(0);
-      if(key && RmtCnt==0) {
-         switch(key) {
-         case 98:
-            // go up
-            cy=-1;
-            break;
+      scan_input(&key,&press_key);
 
-         case 194:
-            //go right
-            cx=1;
-            break;
-
-         case 34:
-            //go left
-            cx=-1;
-            break;
-
-         case 168:
-            //go down
-            cy=1;
-            break;
-         case 66:
-            //0
-            break;
-         case 104:
-            input=1;
-            break;
-
-         case 152:
-            input=2;
-            break;
-
-         case 176:
-            input=3;
-            break;
-
-         case 48:
-            input=4;
-            break;
-
-         case 24:
-            input=5;
-            break;
-
-         case 122:
-            input=6;
-            break;
-
-         case 16:
-            input=7;
-            break;
-
-         case 56:
-            input=8;
-            break;
-
-         case 90:
-            input=9;
-            break;
-
-
-         case 82:
-            // clear number in current block
-            input=10;
-
-            break;
-
-         }
-         if (input) {
-            if (input==10) {
-               //delete current
-               if (KNOWN_NUM[py][px]==0) {
-                  LCD_Fill(13+px*24,13+py*24,35+px*24,35+py*24,CYAN);
-                  fill_num[py][px]=0;
-                  str="Deleted";
-               }
-            } else{
-               if (KNOWN_NUM[py][px]==0) {
-                  LCD_Fill(13+px*24,13+py*24,35+px*24,35+py*24,CYAN);
-                  LCD_ShowChar(20+24*px,16+24*py,input+48,16,1);
-                  fill_num[py][px]=input;
-                  str="( , ) => ";
-                  sn=1;
-
-               } else{
-
-                  str="Can't set";
-               }
+      if (key!=REM_NONE) {
+         if (key==REM_DEL) {
+            //delete current
+            if (KNOWN_NUM[py][px]==0) {
+               LCD_Fill(13+px*24,13+py*24,35+px*24,35+py*24,CYAN);
+               fill_num[py][px]=0;
+               str="Deleted";
+            }else{
+               str="Can't delete";
             }
-         } else if (key==162) {
+         } else if (key>0&&key<=9) {
+            if (KNOWN_NUM[py][px]==0) {
+               LCD_Fill(13+px*24,13+py*24,35+px*24,35+py*24,CYAN);
+               LCD_ShowChar(20+24*px,16+24*py,key+48,16,1);
+               fill_num[py][px]=key;
+               str="( , ) => ";
+               sn=1;
+
+            } else{
+
+               str="Can't set";
+            }
+         }
+         else if (key==REM_POWER) {
             // power button,validate result
             if (validate(fill_num)) {
                str="You win!";
@@ -310,10 +254,28 @@ int main(void) {
                str="Incorrect!";
             }
          } else {
+            switch (key) {
+            case REM_UP:
+               cy=-1;
+               break;
+            case REM_DOWN:
+               cy=1;
+               break;
+            case REM_RIGHT:
+               cx=1;
+               break;
+            case REM_LEFT:
+               cy=-1;
+               break;
+            default:
+               cy=0;
+               cx=0;
+               break;
+            }
             if(!s&&((py+cy>8)||(py+cy)<0||(px+cx>8)||(px+cx<0))) {
                // on border and switch is off
                str="Can't move";
-            }else{
+            }else if (cy!=0 || cx!=0) {
                LCD_Fill(13+px*24,13+py*24,35+px*24,35+py*24,WHITE);
                for(i=0; i<5; ++i) {
                   if(((px+1)*24>YELLOW_AREA[i][0]) && ((px+1)*24<YELLOW_AREA[i][2]) && ((py+1)*24>YELLOW_AREA[i][1]) && ((py+1)*24<YELLOW_AREA[i][3])) {
@@ -345,8 +307,8 @@ int main(void) {
             }
 
          }
-
       }
+
       if(press_key) {
          if (press_key==WKUP_PRES) {
             board_init(KNOWN_NUM,name);
@@ -371,7 +333,7 @@ int main(void) {
          if (sn==1) {
             LCD_ShowNum(38,260,px+1,1,16);
             LCD_ShowNum(54,260,py+1,1,16);
-            LCD_ShowNum(102,260,input,1,16);
+            LCD_ShowNum(102,260,key,1,16);
          }else if (sn==2) {
 
             LCD_ShowNum(102,260,px+1,1,16);
@@ -381,11 +343,13 @@ int main(void) {
       }
       str=0;
       sn=0;
-      input=0;
       cy=0;
       cx=0;
 
    }
+
+
+
 }
 
 void board_init(const u8 KNOWN_NUM[][9],const u8* name){
